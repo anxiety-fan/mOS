@@ -39,7 +39,6 @@ int writePort(char b) {
     return 0;
 }
 
-
 bool writePortWithACK(char b) {
     if (0 > writePort(b)) return false;
     for (int i = 0; ring_buffer_empty(&PS2Port1); i++) {
@@ -47,6 +46,12 @@ bool writePortWithACK(char b) {
     }
     if (ring_buffer_pop(&PS2Port1) != 0xFA) return false;
     return true;
+}
+
+int writePort2(char b) {
+    if (!port2active) return -1;
+    if (0 > writeController(0xD4)) return -1;
+    return writePort(b);
 }
 
 bool writePort2WithACK(char b) {
@@ -57,13 +62,6 @@ bool writePort2WithACK(char b) {
     if (ring_buffer_pop(&PS2Port2) != 0xFA) return false;
     return true;
 }
-
-int writePort2(char b) {
-    if (!port2active) return -1;
-    if (0 > writeController(0xD4)) return -1;
-    return writePort(b);
-}
-
 
 char readConfig() {
     if (0 > writeController(0x20)) return 0x0;
