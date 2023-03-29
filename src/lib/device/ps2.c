@@ -43,7 +43,7 @@ int writePort(char b) {
 bool writePortWithACK(char b) {
     if (0 > writePort(b)) return false;
     for (int i = 0; ring_buffer_empty(&PS2Port1); i++) {
-        if (i >= 65535) return -1;
+        if (i >= 65535) return false;
     }
     if (ring_buffer_pop(&PS2Port1) != 0xFA) return false;
     return true;
@@ -52,7 +52,7 @@ bool writePortWithACK(char b) {
 bool writePort2WithACK(char b) {
     if (0 > writePort2(b)) return false;
     for (int i = 0; ring_buffer_empty(&PS2Port2); i++) {
-        if (i >= 65535) return -1;
+        if (i >= 65535) return false;
     }
     if (ring_buffer_pop(&PS2Port2) != 0xFA) return false;
     return true;
