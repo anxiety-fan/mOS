@@ -3,10 +3,12 @@
 #include "video/VGA_text.h"
 
 #include "device/serial.h"
+#include "device/ps2.h"
 
 int os_main(){
     makeInterruptTable();
     serialInit();
+    ps2Init();
 
 
     clearScreen(black);
