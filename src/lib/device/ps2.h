@@ -28,6 +28,7 @@ enum DeviceType {
 };
 
 enum PS2KeyboardScanCode {
+    None,
     SC1, //unimplimented
     SC2,
     SC3, //unimplimented

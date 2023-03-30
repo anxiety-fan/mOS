@@ -183,7 +183,7 @@ int ps2Init() {
         }
         uint8_t p1_b1 = ring_buffer_pop(&PS2Port1);
         if (p1_b1 == 0xAB || p1_b1 == 0xAC) { 
-            dev1.isKeyboard = 1;
+            dev1.isKeyboard = true;
             //get 2nd byte 
             for (int i = 0; ring_buffer_empty(&PS2Port1); i++) {
                 if (i >= 65535) return false;
@@ -192,7 +192,11 @@ int ps2Init() {
             dev1.type = translateDeviceType(p1_b2);
             dev1.scancode = SC2;
         }
-        else { dev1.type = translateDeviceType(p1_b1); }
+        else { 
+            dev1.isKeyboard = false;
+            dev1.type = translateDeviceType(p1_b1); 
+            dev1.scancode = None;
+        }
         writePortWithACK(0xF4);
     }
 
@@ -214,7 +218,11 @@ int ps2Init() {
             dev2.type = translateDeviceType(p1_b2);
             dev2.scancode = SC2;
         }
-        else { dev2.type = translateDeviceType(p1_b1); }
+        else { 
+            dev2.isKeyboard = false;
+            dev2.type = translateDeviceType(p1_b1); 
+            dev2.scancode = None;
+        }
         writePort2WithACK(0xF4);
     }
     return 0;
