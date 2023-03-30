@@ -23,11 +23,20 @@ enum DeviceType {
 
     //after 0xAC
     SunKey = 0xA1,
+
+    Unknown,
+};
+
+enum PS2KeyboardScanCode {
+    SC1, //unimplimented
+    SC2,
+    SC3, //unimplimented
 };
 
 struct PS2Device {
     enum DeviceType type;
-
+    bool isKeyboard;
+    enum PS2KeyboardScanCode scancode;
 };
 
 int ps2Init();

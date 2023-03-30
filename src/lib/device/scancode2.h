@@ -140,3 +140,25 @@ enum ScanCode2_Extended {
     //run through Extended again
     SC2_NEXT_RELEASE_E = 0xF0,
 };
+
+/*
+    Scan Code 2 State Machine (errors not shown)
+     - E0 = 0xE0 = SC2_EXTENDED_DOWN
+     - F0 = 0xF0 = SC2_NEXT_RELEASED or SC2_NEXT_RELEASED_E
+     - PRTSC_1 = 0x12 = SC2_PRTSC_PART1_DOWN
+     - PRTSC_2 = 0x7C = SC2_PRTSC_PART2_DOWN
+     - * is any valid code not specified
+------------------------------------------------------------------------------------------------------
+    *        E0          F0                        *                                                 |
+  \->(Base) -> (Extended) -> (Extended [Released]) -> (goto Base)                                    |
+   \  |         |                   |                                                                |
+    \-|         \-> (goto Base)     \-> (Base) -> (Extended) -> (Extended [Released]) -> (goto Base) |
+      |          |*                 PRTSC_2    E0           F0                      PRTSC_1          |
+      |          |                                                                                   |
+      |           \-> (Base) -> (Extended) -> (goto Base)                                            |
+      |         PRTSC_1      E0          PRTSC_2                                                     |
+      |                                                                                              |
+      \---> (Base [Released]) -> (goto Base)                                                         |  
+        F0                    *                                                                      |
+------------------------------------------------------------------------------------------------------
+*/
