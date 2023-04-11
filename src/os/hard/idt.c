@@ -53,18 +53,6 @@ static idtr_t idtr;
 void makeInterruptTable () {
 
     idtr.base = (uint32_t)(&idt);
-<<<<<<< HEAD
-    idtr.limit = sizeof(IdtEntry) * 256 - 1;
-
-    for (uint8_t idx = 0; idx < 32 + 16; idx++) {
-        idtSetDesc(idx, idt_stub_table[idx], 0x8E);
-    }
-
-    initPIC(32);
-
-    __asm__ volatile ("lidt [%0]" : : "r"(&idtr));
-    __asm__ volatile ("sti");
-=======
     
     // used to calculate the end of the IDT, idtr.base + idtr.limit
     // this result is the address of the last byte of the IDT. Without -1 it would be the byte after the IDT
@@ -82,7 +70,6 @@ void makeInterruptTable () {
     // load the IDT and then enable interrupts
     __asm__ volatile ("lidt [%0]" : : "r"(&idtr));
     enableInterrupts();
->>>>>>> d45eee08fca4b49bd05c9098dadfa0b50dae0503
 }
 
 void idtSetDesc (uint8_t idx, void* isr, uint8_t flags) {

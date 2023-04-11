@@ -27,17 +27,25 @@ void ps2HandlerPort2(isr_registers_t* regs) {
     ring_buffer_push(&PS2Port2, b);
 }
 
+int readController() {
+    return inb(PS2_STAT_CMD);
+}
+
+int readData() {
+    return inb(PS2_DATA);
+}
+
 int writeController(uint8_t b) {
-    for (int i = 0; inb(PS2_STAT_CMD) & 0b0010; i++) { //check status of ps2 write buffer
-        if (i >= 65535) return -1; //if past timeout, error
-        outb(PS2_STAT_CMD, b); //status and command are the same port (don't ask me why)
+    for (int i = 0; (readController() & 0b0010) != 0; i++) { //check status of ps2 write buffer
+        if (i >= PS2_TIMEOUT) return -1; //if past timeout, error
     }
+    outb(PS2_STAT_CMD, b); //status and command are the same port (don't ask me why)
     return 0;
 }
 
 int writePort(uint8_t b) {
-    for (int i = 0; inb(PS2_STAT_CMD) & 0x01; i++) { //check status of ps2 write buffer
-        if (i >= 65535) return -1; //if past timeout, error
+    for (int i = 0; (readController() & 0b0010) != 0; i++) { //check status of ps2 write buffer
+        if (i >= PS2_TIMEOUT) return -1; //if past timeout, error
     }
     outb(PS2_DATA, b);
     return 0;
@@ -46,14 +54,13 @@ int writePort(uint8_t b) {
 bool writePortWithACK(uint8_t b) {
     if (0 > writePort(b)) return false;
     for (int i = 0; ring_buffer_empty(&PS2Port1); i++) {
-        if (i >= 65535) return false;
+        if (i >= PS2_TIMEOUT) return false;
     }
     if (ring_buffer_pop(&PS2Port1) != 0xFA) return writePortWithACK(b);
     return true;
 }
 
 int writePort2(uint8_t b) {
-    if (!port2active) return -1;
     if (0 > writeController(0xD4)) return -1;
     return writePort(b);
 }
@@ -61,15 +68,17 @@ int writePort2(uint8_t b) {
 bool writePort2WithACK(uint8_t b) {
     if (0 > writePort2(b)) return false;
     for (int i = 0; ring_buffer_empty(&PS2Port2); i++) {
-        if (i >= 65535) return false;
+        if (i >= PS2_TIMEOUT) return false;
     }
     if (ring_buffer_pop(&PS2Port2) != 0xFA) return writePort2WithACK(b);
     return true;
 }
 
+//
+
 char readConfig() {
     if (0 > writeController(0x20)) return 0x0;
-    return inb(PS2_STAT_CMD);
+    return inb(PS2_DATA);
 }
 
 enum DeviceType translateDeviceType(uint8_t b) {
@@ -105,7 +114,7 @@ enum DeviceType translateDeviceType(uint8_t b) {
     }
 }
 
-int ps2Init() { 
+int ps2Init() {
     irqSetHandler(1, ps2HandlerPort1);
     irqSetHandler(12, ps2HandlerPort2);
 
@@ -115,15 +124,15 @@ int ps2Init() {
         //(USB support is probably a stretch goal)
     writeController(0xAD); //disable 1st device
     writeController(0xA7); //disable 2nd (if it exists)
-    while (inb(PS2_STAT_CMD) & 0b0001) inb(PS2_DATA); //flush read buffer while not empty
-    uint8_t stat = readConfig();
-    if (!(stat & 0b00100000)) secondDeviceEnabled = false; //check if second device is supported
-    stat = stat & 0b10111100; // disable interrupts and translation
+    while (readController() & 0b0001) inb(PS2_DATA); //flush read buffer while not empty
+    char stat = readConfig();
+    if ((stat & 0b00100000) == 0) secondDeviceEnabled = false; //check if second device is supported
+    stat = stat ^ 0b1000011; // disable interrupts and translation
     writeController(0x60);
     writeController(stat); //write new status config
 
     writeController(0xAA);
-    if (inb(PS2_STAT_CMD) != 0x55)  {
+    if (readData() != 0x55)  {
         enableInterrupts();
         return -1; //test controller failed
     }
@@ -133,7 +142,7 @@ int ps2Init() {
 
     if (secondDeviceEnabled) {
         writeController(0xA8);
-        if (readConfig() & 0b00100000) { //check whether second device can be enabled (i.e. it exists)
+        if ((readConfig() & 0b00100000) != 0) { //check whether second device can be enabled (i.e. it exists)
             secondDeviceEnabled = false;
         }
         else {
@@ -143,26 +152,33 @@ int ps2Init() {
 
     //testing devices themselves
     //erroring at sign of any error (there is probably a better way to do this)
+    int numPorts;
+    if (secondDeviceEnabled) numPorts = 2;
+    else numPorts = 1;
     writeController(0xAB);
-    if(inb(PS2_STAT_CMD) != 0x0) {
+    if(readData() != 0x0) {
         enableInterrupts();
-        return -1;
+        numPorts--;
     }
 
     if (secondDeviceEnabled) {
         writeController(0xA9);
-        if(inb(PS2_STAT_CMD) != 0x0) {
+        if(readData() != 0x0) {
             enableInterrupts();
-            return -1;
+            numPorts--;
         }
+    }
+
+    if (numPorts == 0) {
+        return -2;
     }
 
     stat = readConfig(); //reenable interrupts for PS2 devices
     writeController(0xAE);
-    stat = stat & 0b0001;
+    stat = stat | 0b0001;
     if (secondDeviceEnabled) {
         writeController(0xA8);
-        stat = stat & 0b0010;
+        stat = stat | 0b0010;
     }
     writeController(0x60);
     writeController(stat); //write new status config
@@ -179,14 +195,14 @@ int ps2Init() {
         writePortWithACK(0xF2);
         // Get 1st byte of type
         for (int i = 0; ring_buffer_empty(&PS2Port1); i++) {
-            if (i >= 65535) return false;
+            if (i >= PS2_TIMEOUT) return false;
         }
         uint8_t p1_b1 = ring_buffer_pop(&PS2Port1);
         if (p1_b1 == 0xAB || p1_b1 == 0xAC) { 
             dev1.isKeyboard = true;
             //get 2nd byte 
             for (int i = 0; ring_buffer_empty(&PS2Port1); i++) {
-                if (i >= 65535) return false;
+                if (i >= PS2_TIMEOUT) return false;
             }
             uint8_t p1_b2 = ring_buffer_pop(&PS2Port1);
             dev1.type = translateDeviceType(p1_b2);
@@ -205,14 +221,14 @@ int ps2Init() {
         writePort2WithACK(0xF2);
         // Get 1st byte of type
         for (int i = 0; ring_buffer_empty(&PS2Port2); i++) {
-            if (i >= 65535) return false;
+            if (i >= PS2_TIMEOUT) return false;
         }
         uint8_t p1_b1 = ring_buffer_pop(&PS2Port2);
         if (p1_b1 == 0xAB || p1_b1 == 0xAC) { 
             dev2.isKeyboard = 1;
             //get 2nd byte 
             for (int i = 0; ring_buffer_empty(&PS2Port2); i++) {
-                if (i >= 65535) return false;
+                if (i >= PS2_TIMEOUT) return false;
             }
             uint8_t p1_b2 = ring_buffer_pop(&PS2Port2);
             dev2.type = translateDeviceType(p1_b2);
@@ -225,6 +241,11 @@ int ps2Init() {
         }
         writePort2WithACK(0xF4);
     }
+
+    if (!(port1active || port2active)) {
+        return -2;   
+    }
+
     return 0;
 }
 

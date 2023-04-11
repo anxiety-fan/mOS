@@ -8,12 +8,25 @@
 int os_main(){
     makeInterruptTable();
     serialInit();
-    ps2Init();
+    int ps2exists = ps2Init();
 
 
     clearScreen(black);
 
     writeText("Welcome To mOS!", (80 - 15)/2, 5, red);
+
+    switch (ps2exists) {
+        case 0: 
+            println("PS2!!!!", green);
+            break;
+        case -1:
+            println("Controller failed", red);
+            if (debugch == 0xFC) println("Normal fail!", red);
+            break;
+        case -2: 
+            println("All possible PS2 ports failed", red);
+            break;
+    }
 
     println("It booted!!!", green);
 

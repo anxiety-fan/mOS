@@ -5,6 +5,9 @@
 #define PS2_DATA 0x60
 #define PS2_STAT_CMD 0x64
 
+#define PS2_TIMEOUT 10000000
+
+char debugch;
 
 enum DeviceType {
     StandardMouse = 0x00,
