@@ -5,7 +5,7 @@
 #define PS2_DATA 0x60
 #define PS2_STAT_CMD 0x64
 
-#define PS2_TIMEOUT 10000000
+#define PS2_TIMEOUT 60000
 
 char debugch;
 

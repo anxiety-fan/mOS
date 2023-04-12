@@ -56,7 +56,7 @@ bool writePortWithACK(uint8_t b) {
     for (int i = 0; ring_buffer_empty(&PS2Port1); i++) {
         if (i >= PS2_TIMEOUT) return false;
     }
-    if (ring_buffer_pop(&PS2Port1) != 0xFA) return writePortWithACK(b);
+    if (ring_buffer_pop(&PS2Port1) != 0xFA) return false;
     return true;
 }
 
@@ -70,7 +70,7 @@ bool writePort2WithACK(uint8_t b) {
     for (int i = 0; ring_buffer_empty(&PS2Port2); i++) {
         if (i >= PS2_TIMEOUT) return false;
     }
-    if (ring_buffer_pop(&PS2Port2) != 0xFA) return writePort2WithACK(b);
+    if (ring_buffer_pop(&PS2Port2) != 0xFA) return false;
     return true;
 }
 
@@ -115,6 +115,8 @@ enum DeviceType translateDeviceType(uint8_t b) {
 }
 
 int ps2Init() {
+    ring_buffer_init(&PS2Port1, 64);
+    ring_buffer_init(&PS2Port2, 64);
     irqSetHandler(1, ps2HandlerPort1);
     irqSetHandler(12, ps2HandlerPort2);
 
