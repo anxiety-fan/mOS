@@ -7,8 +7,6 @@
 
 #define PS2_TIMEOUT 60000
 
-char debugch;
-
 enum DeviceType {
     StandardMouse = 0x00,
     ScrollMouse = 0x03,
@@ -44,3 +42,4 @@ struct PS2Device {
 };
 
 int ps2Init();
+struct PS2Device *getPortType(int portnum);

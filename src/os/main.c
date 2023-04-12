@@ -21,12 +21,17 @@ int os_main(){
             break;
         case -1:
             println("Controller failed", red);
-            if (debugch == 0xFC) println("Normal fail!", red);
             break;
         case -2: 
             println("All possible PS2 ports failed", red);
             break;
     }
+
+    struct PS2Device *d1 = getPortType(1);
+    struct PS2Device *d2 = getPortType(2);
+    
+    if (d1->type == Unknown) println("PS/2: Port 1 is not available", red);
+    if (d2->type == Unknown) println("PS/2: Port 2 is not available", red);
 
     println("It booted!!!", green);
 
@@ -37,7 +42,7 @@ int os_main(){
     println(string, colour);
     
 
-    while (1==1)
+    while (10%3==1)
         ;
         
     return 0;

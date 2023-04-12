@@ -17,7 +17,6 @@ static bool port2active = false;
 static struct PS2Device dev1;
 static struct PS2Device dev2;
 
-
 void ps2HandlerPort1(isr_registers_t* regs) {
     uint8_t b = inb(PS2_DATA);
     ring_buffer_push(&PS2Port1, b);
@@ -33,6 +32,18 @@ int readController() {
 
 int readData() {
     return inb(PS2_DATA);
+}
+
+struct PS2Device *getPortType(int portnum) {
+    if (portnum == 1) {
+        return &dev1;
+    }
+    else if (portnum == 2) {
+        return &dev2;
+    }
+    else {
+        return NULL;
+    }
 }
 
 int writeController(uint8_t b) {
@@ -188,13 +199,14 @@ int ps2Init() {
 
     //reseting devices
     port1active = writePortWithACK(0xFF);
-    if (secondDeviceEnabled)
+    if (!ring_buffer_empty(&PS2Port1) && ring_buffer_pop(&PS2Port1) != 0xAA) port1active = false;
+    if (secondDeviceEnabled) {
         port2active = writePort2WithACK(0xFF);
+        if (!ring_buffer_empty(&PS2Port2) && ring_buffer_pop(&PS2Port2) != 0xAA) port2active = false;
+    }
 
     //determining device types
     if (port1active) {
-        writePortWithACK(0xF5);
-        writePortWithACK(0xF2);
         // Get 1st byte of type
         for (int i = 0; ring_buffer_empty(&PS2Port1); i++) {
             if (i >= PS2_TIMEOUT) return false;
@@ -217,10 +229,13 @@ int ps2Init() {
         }
         writePortWithACK(0xF4);
     }
+    else {
+        dev1.isKeyboard = false;
+        dev1.type = Unknown;
+        dev1.scancode = None;
+    }
 
     if (port2active) {
-        writePort2WithACK(0xF5);
-        writePort2WithACK(0xF2);
         // Get 1st byte of type
         for (int i = 0; ring_buffer_empty(&PS2Port2); i++) {
             if (i >= PS2_TIMEOUT) return false;
@@ -242,6 +257,11 @@ int ps2Init() {
             dev2.scancode = None;
         }
         writePort2WithACK(0xF4);
+    }
+    else {
+        dev2.isKeyboard = false;
+        dev2.type = Unknown;
+        dev2.scancode = None;
     }
 
     if (!(port1active || port2active)) {
